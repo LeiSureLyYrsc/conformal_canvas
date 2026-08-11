@@ -22,11 +22,15 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             build-essential \
             cmake \
+            gcc-14 \
+            g++-14 \
             libboost-system-dev \
             libboost-url-dev \
             libmuparserx-dev \
             libopencv-dev \
             libomp-dev
+          echo "CC=gcc-14" >> "$GITHUB_ENV"
+          echo "CXX=g++-14" >> "$GITHUB_ENV"
 
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release

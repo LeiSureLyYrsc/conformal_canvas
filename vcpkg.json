@@ -1,0 +1,13 @@
+{
+  "name": "conformal-canvas",
+  "version-string": "1.0.0",
+  "builtin-baseline": "2f1d605400c8727cc00c15797aba796c88ccd523",
+  "dependencies": [
+    {
+      "name": "opencv4",
+      "default-features": false,
+      "features": ["png", "jpeg", "tiff", "webp", "thread", "intrinsics"]
+    },
+    "boost-url"
+  ]
+}

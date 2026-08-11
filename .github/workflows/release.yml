@@ -1,0 +1,173 @@
+name: Build Release Binaries
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  VCPKG_BASELINE: 2f1d605400c8727cc00c15797aba796c88ccd523
+  MUPARSERX_VERSION: v4.0.12
+
+jobs:
+  build-windows:
+    name: Build Windows x64
+    runs-on: windows-2025
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Export vcpkg cache credentials
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL)
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN)
+
+      - name: Set up vcpkg
+        shell: pwsh
+        run: |
+          git clone --filter=blob:none https://github.com/microsoft/vcpkg.git "$env:GITHUB_WORKSPACE\vcpkg"
+          git -C "$env:GITHUB_WORKSPACE\vcpkg" checkout $env:VCPKG_BASELINE
+          & "$env:GITHUB_WORKSPACE\vcpkg\bootstrap-vcpkg.bat"
+        env:
+          VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+
+      - name: Build muparserx
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -UseBasicParsing "https://github.com/beltoforion/muparserx/archive/refs/tags/$env:MUPARSERX_VERSION.tar.gz" -OutFile muparserx.tar.gz
+          tar -xzf muparserx.tar.gz
+          Move-Item "muparserx-$($env:MUPARSERX_VERSION.TrimStart('v'))" muparserx-src
+          cmake -S muparserx-src -B muparserx-build `
+            -DCMAKE_INSTALL_PREFIX="$env:GITHUB_WORKSPACE\muparserx-prefix" `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded `
+            -DBUILD_SHARED_LIBS=OFF `
+            -DBUILD_EXAMPLES=OFF
+          cmake --build muparserx-build --config Release -j
+          cmake --install muparserx-build --config Release
+
+      - name: Configure
+        shell: pwsh
+        run: >
+          cmake -S . -B build -A x64 -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_TOOLCHAIN_FILE="$env:GITHUB_WORKSPACE\vcpkg\scripts\buildsystems\vcpkg.cmake"
+          -DVCPKG_TARGET_TRIPLET=x64-windows-static
+          -DCMAKE_PREFIX_PATH="$env:GITHUB_WORKSPACE\muparserx-prefix"
+        env:
+          VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+
+      - name: Build
+        shell: pwsh
+        run: cmake --build build --config Release -j
+
+      - name: Stage artifacts
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path staging | Out-Null
+          Copy-Item build\Release\conformal_canvas.exe staging\
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vsPath = & $vswhere -latest -property installationPath
+          $redist = Get-ChildItem "$vsPath\VC\Redist\MSVC" -Directory | Sort-Object Name -Descending | Select-Object -First 1
+          Get-ChildItem "$($redist.FullName)\x64" -Recurse -Include vcomp140.dll,vcruntime140.dll,vcruntime140_1.dll,msvcp140.dll |
+            Copy-Item -Destination staging\ -Force
+          Compress-Archive -Path staging\* -DestinationPath conformal_canvas-windows-x64.zip -Force
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: conformal_canvas-windows-x64
+          path: conformal_canvas-windows-x64.zip
+          if-no-files-found: error
+
+  build-linux:
+    name: Build Linux x64
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gcc-14 g++-14 libgomp-14-dev
+          echo "CC=gcc-14" >> "$GITHUB_ENV"
+          echo "CXX=g++-14" >> "$GITHUB_ENV"
+
+      - name: Export vcpkg cache credentials
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL)
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN)
+
+      - name: Set up vcpkg
+        run: |
+          git clone --filter=blob:none https://github.com/microsoft/vcpkg.git "$GITHUB_WORKSPACE/vcpkg"
+          git -C "$GITHUB_WORKSPACE/vcpkg" checkout "$VCPKG_BASELINE"
+          "$GITHUB_WORKSPACE/vcpkg/bootstrap-vcpkg.sh"
+        env:
+          VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+
+      - name: Build muparserx
+        run: |
+          curl -fsSL "https://github.com/beltoforion/muparserx/archive/refs/tags/${MUPARSERX_VERSION}.tar.gz" -o muparserx.tar.gz
+          tar -xzf muparserx.tar.gz
+          mv "muparserx-${MUPARSERX_VERSION#v}" muparserx-src
+          cmake -S muparserx-src -B muparserx-build \
+            -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/muparserx-prefix" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DBUILD_EXAMPLES=OFF
+          cmake --build muparserx-build -j"$(nproc)"
+          cmake --install muparserx-build
+
+      - name: Configure
+        run: >
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_TOOLCHAIN_FILE="$GITHUB_WORKSPACE/vcpkg/scripts/buildsystems/vcpkg.cmake"
+          -DVCPKG_TARGET_TRIPLET=x64-linux-static
+          -DCMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/muparserx-prefix"
+        env:
+          VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+
+      - name: Build
+        run: cmake --build build -j"$(nproc)"
+
+      - name: Stage artifacts
+        run: |
+          mkdir -p staging
+          strip build/conformal_canvas -o staging/conformal_canvas
+          tar -czf conformal_canvas-linux-x64.tar.gz -C staging conformal_canvas
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: conformal_canvas-linux-x64
+          path: conformal_canvas-linux-x64.tar.gz
+          if-no-files-found: error
+
+  release:
+    name: Publish Release
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true

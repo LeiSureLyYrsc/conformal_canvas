@@ -19,7 +19,7 @@ sudo apt install -y \
 
 ## 从源码构建
 ```sh
-git clone --recursive https://github.com/quqiOnfree/conformal_canvas.git
+git clone --recursive https://github.com/LeiSureLyYrsc/conformal_canvas.git
 cd conformal_canvas
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j"$(nproc)"
@@ -70,20 +70,25 @@ curl -X POST \
 - `400 Bad Request`：不是 `POST`、缺少参数或图片为空
 - `415 Unsupported Media Type`：`Content-Type` 不是 `image/*`
 
+## 预编译二进制
+GitHub Actions 会自动编译 Linux / Windows 可直接运行的二进制，发布在 [Releases](https://github.com/LeiSureLyYrsc/conformal_canvas/releases)：
+- `conformal_canvas-linux-x64.tar.gz`：Linux 单文件静态链接二进制，解压后直接 `./conformal_canvas` 运行
+- `conformal_canvas-windows-x64.zip`：Windows 可执行文件，解压后双击或命令行直接运行
+
 ## Docker
 仓库会自动发布镜像到 GHCR，镜像名为：
 ```sh
-ghcr.io/quqionfree/conformal_canvas
+ghcr.io/leisurelyyrsc/conformal_canvas
 ```
 
 拉取最新镜像：
 ```sh
-docker pull ghcr.io/quqionfree/conformal_canvas:latest
+docker pull ghcr.io/leisurelyyrsc/conformal_canvas:latest
 ```
 
 运行容器：
 ```sh
-docker run -d -p 7854:7854 ghcr.io/quqionfree/conformal_canvas:latest
+docker run -d -p 7854:7854 ghcr.io/leisurelyyrsc/conformal_canvas:latest
 ```
 
 然后就可以像本地运行一样访问 HTTP 接口。
