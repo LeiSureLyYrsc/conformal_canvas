@@ -52,6 +52,8 @@ jobs:
             -DBUILD_EXAMPLES=OFF
           cmake --build muparserx-build --config Release -j
           cmake --install muparserx-build --config Release
+          $config = "$env:GITHUB_WORKSPACE\muparserx-prefix\cmake\muparserxConfig.cmake"
+          (Get-Content $config -Raw) -replace 'set\(muparserx_INCLUDE_DIRS \$\{MUPARSERX_INCLUDE_DIR\}\)', 'set(muparserx_INCLUDE_DIRS "${MUPARSERX_ROOT}/include")' | Set-Content $config -NoNewline
 
       - name: Configure
         shell: pwsh
@@ -129,6 +131,7 @@ jobs:
             -DBUILD_EXAMPLES=OFF
           cmake --build muparserx-build -j"$(nproc)"
           cmake --install muparserx-build
+          sed -i 's|set(muparserx_INCLUDE_DIRS ${MUPARSERX_INCLUDE_DIR})|set(muparserx_INCLUDE_DIRS "${MUPARSERX_ROOT}/include")|' "$GITHUB_WORKSPACE/muparserx-prefix/share/cmake/muparserx/muparserxConfig.cmake"
 
       - name: Configure
         run: >
