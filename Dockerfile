@@ -5,11 +5,11 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
-    libboost-system-dev \
-    libboost-url-dev \
-    libmuparserx-dev \
-    libopencv-dev \
-    libomp-dev \
+    libboost-dev=1.90.0.1ubuntu3 \
+    libboost-url1.90-dev=1.90.0-6ubuntu1 \
+    libmuparserx-dev=4.0.12-2.1 \
+    libopencv-dev=4.10.0+dfsg-7ubuntu5 \
+    libomp-dev=1:21.1.6-71 \
  && apt-get autoremove -y \
  && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
@@ -24,11 +24,12 @@ FROM ubuntu:26.04 AS runtime
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libmuparserx-dev \
-    libopencv-core-dev \
-    libopencv-imgproc-dev \
-    libopencv-imgcodecs-dev \
-    libomp-dev \
+    libboost-url1.90.0=1.90.0-6ubuntu1 \
+    libmuparserx4.0.12=4.0.12-2.1 \
+    libopencv-core410=4.10.0+dfsg-7ubuntu5 \
+    libopencv-imgproc410=4.10.0+dfsg-7ubuntu5 \
+    libopencv-imgcodecs410=4.10.0+dfsg-7ubuntu5 \
+    libomp5=1:22.1.2-1ubuntu1 \
  && apt-get autoremove -y \
  && rm -rf /var/lib/apt/lists/*
 
