@@ -8,6 +8,8 @@
       "default-features": false,
       "features": ["png", "jpeg", "tiff", "webp", "thread", "intrinsics"]
     },
+    "boost-beast",
+    "boost-asio",
     "boost-url"
   ]
 }
