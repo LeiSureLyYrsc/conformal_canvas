@@ -30,6 +30,24 @@ cmake --build build -j"$(nproc)"
 ./build/conformal_canvas
 ```
 
+## Web 界面
+`index.html` 提供可视化操作界面:选择/拖拽图片、切换 Escher / Conformal 变换、输入复变函数,预览并下载结果。
+
+由于浏览器跨域(CORS)限制,推荐通过本地代理访问(页面与 API 同源,无需改任何代码):
+
+```sh
+# 终端 1:先启动 C++ 服务
+./build/conformal_canvas
+
+# 终端 2:再启动 Web 代理(标准库,零依赖)
+python proxy.py
+
+# 浏览器打开
+# http://127.0.0.1:8000
+```
+
+也可直接用任意静态服务器打开 `index.html` 后,把页面中的服务地址指向代理端口。
+
 ## HTTP 接口
 ### 1. Escher 变换
 - 方法：`POST`

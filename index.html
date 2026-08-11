@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conformal Canvas 图像变换工具</title>
+<style>
+:root {
+  --bg: #0f1115;
+  --panel: #1a1d24;
+  --border: #2a2f3a;
+  --text: #e6e9ef;
+  --muted: #8b93a3;
+  --accent: #4f8cff;
+  --ok: #3ecf6e;
+  --err: #ff5c5c;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  min-height: 100vh;
+}
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 24px; border-bottom: 1px solid var(--border);
+  gap: 16px; flex-wrap: wrap;
+}
+header h1 { font-size: 18px; font-weight: 600; }
+header .tag { color: var(--muted); font-size: 12px; }
+.server-box { display: flex; align-items: center; gap: 8px; }
+.server-box label { font-size: 13px; color: var(--muted); }
+.server-box input {
+  width: 240px; padding: 6px 10px; background: #12151b;
+  border: 1px solid var(--border); border-radius: 6px; color: var(--text);
+  font-family: Consolas, monospace; font-size: 13px;
+}
+.server-box input:focus { outline: none; border-color: var(--accent); }
+main {
+  max-width: 1000px; margin: 24px auto; padding: 0 24px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+}
+@media (max-width: 760px) { main { grid-template-columns: 1fr; } }
+.card {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 12px; padding: 18px;
+}
+.card h2 { font-size: 14px; color: var(--muted); margin-bottom: 14px; font-weight: 500; }
+#dropzone {
+  border: 2px dashed var(--border); border-radius: 8px; padding: 32px;
+  text-align: center; color: var(--muted); cursor: pointer;
+  transition: border-color .2s, color .2s; font-size: 14px;
+}
+#dropzone.drag { border-color: var(--accent); color: var(--accent); }
+#dropzone .sub { font-size: 12px; margin-top: 6px; opacity: .7; }
+#preview {
+  width: 100%; max-height: 300px; object-fit: contain; margin-top: 12px;
+  border-radius: 8px; background: #0b0d11; display: none;
+}
+#preview.show { display: block; }
+.control-row { margin-bottom: 16px; }
+.control-row > label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+.radio-group { display: flex; gap: 20px; }
+.radio-group label {
+  display: flex; align-items: center; gap: 6px;
+  color: var(--text); font-size: 14px; cursor: pointer;
+  padding: 8px 14px; border: 1px solid var(--border); border-radius: 8px;
+  transition: border-color .15s, background .15s;
+}
+.radio-group label.active { border-color: var(--accent); background: rgba(79,140,255,.08); }
+.radio-group input { display: none; }
+input[type="text"] {
+  width: 100%; padding: 8px 10px; background: #12151b;
+  border: 1px solid var(--border); border-radius: 6px; color: var(--text);
+  font-family: Consolas, "Courier New", monospace; font-size: 14px;
+}
+input[type="text"]:focus { outline: none; border-color: var(--accent); }
+.hint { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+#funcWrap[hidden] { display: none; }
+button#runBtn {
+  width: 100%; padding: 11px; background: var(--accent); color: #fff;
+  border: none; border-radius: 8px; font-size: 15px; cursor: pointer;
+  transition: filter .15s;
+}
+button#runBtn:hover:not(:disabled) { filter: brightness(1.1); }
+button#runBtn:disabled { opacity: .5; cursor: not-allowed; }
+#status { margin-top: 14px; font-size: 13px; min-height: 20px; line-height: 1.5; word-break: break-all; }
+#status.error { color: var(--err); }
+#status.ok { color: var(--ok); }
+#resultImg {
+  width: 100%; max-height: 300px; object-fit: contain; border-radius: 8px;
+  background: #0b0d11; display: none;
+}
+#resultImg.show { display: block; }
+#resultMeta { font-size: 12px; color: var(--muted); margin-top: 8px; }
+#downloadBtn {
+  display: none; margin-top: 12px; padding: 8px 16px;
+  background: transparent; color: var(--accent);
+  border: 1px solid var(--accent); border-radius: 8px;
+  font-size: 13px; cursor: pointer;
+}
+#downloadBtn:hover { background: rgba(79,140,255,.1); }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Conformal Canvas 图像变换工具</h1>
+    <div class="tag">Escher 变换 · 复变函数保角映射</div>
+  </div>
+  <div class="server-box">
+    <label for="serverInput">服务地址</label>
+    <input id="serverInput" type="text" value="http://127.0.0.1:7854" spellcheck="false">
+  </div>
+</header>
+
+<main>
+  <section class="card">
+    <h2>① 选择图片</h2>
+    <div id="dropzone">点击选择图片,或将图片拖拽到此处
+      <div class="sub">支持 PNG / JPG / WebP 等常见格式</div>
+    </div>
+    <input id="fileInput" type="file" accept="image/*" hidden>
+    <img id="preview" alt="原图预览">
+  </section>
+
+  <section class="card">
+    <h2>② 变换设置</h2>
+    <div class="control-row">
+      <label>变换类型</label>
+      <div class="radio-group" id="modeGroup">
+        <label class="active"><input type="radio" name="mode" value="escher" checked>Escher 变换</label>
+        <label><input type="radio" name="mode" value="conformal">Conformal 变换</label>
+      </div>
+    </div>
+    <div class="control-row" id="funcWrap" hidden>
+      <label for="funcInput">复变函数表达式(变量为 z)</label>
+      <input id="funcInput" type="text" value="log(z)" spellcheck="false">
+      <div class="hint">示例:exp(z)、z^2、sin(z)、1/z、z^3 - 1/z<br>特殊字符会自动 URL 编码,无需手动处理</div>
+    </div>
+    <button id="runBtn">开始变换</button>
+    <div id="status"></div>
+  </section>
+
+  <section class="card" style="grid-column: 1 / -1;">
+    <h2>③ 结果</h2>
+    <img id="resultImg" alt="变换结果">
+    <div id="resultMeta"></div>
+    <button id="downloadBtn">下载结果 (PNG)</button>
+  </section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  const $ = function (id) { return document.getElementById(id); };
+  const dropzone = $("dropzone"), fileInput = $("fileInput"), preview = $("preview");
+  const runBtn = $("runBtn"), statusEl = $("status");
+  const modeGroup = $("modeGroup"), funcWrap = $("funcWrap"), funcInput = $("funcInput");
+  const resultImg = $("resultImg"), resultMeta = $("resultMeta"), downloadBtn = $("downloadBtn");
+  const serverInput = $("serverInput");
+
+  const isHttp = location.protocol.startsWith("http");
+  serverInput.value = isHttp ? location.origin : "http://127.0.0.1:8000";
+
+  let selectedFile = null;
+  let lastBlobUrl = null;
+
+  function setStatus(text, type) {
+    statusEl.textContent = text;
+    statusEl.className = type || "";
+  }
+
+  function getMode() {
+    const checked = modeGroup.querySelector("input:checked");
+    return checked ? checked.value : "escher";
+  }
+
+  function showFile(file) {
+    if (!file || !file.type.startsWith("image/")) {
+      setStatus("请选择图片文件", "error");
+      return;
+    }
+    selectedFile = file;
+    if (preview.src) URL.revokeObjectURL(preview.src);
+    preview.src = URL.createObjectURL(file);
+    preview.classList.add("show");
+    setStatus("");
+  }
+
+  dropzone.addEventListener("click", function () { fileInput.click(); });
+  fileInput.addEventListener("change", function () { showFile(fileInput.files[0]); });
+
+  ["dragover", "dragenter"].forEach(function (evt) {
+    dropzone.addEventListener(evt, function (e) {
+      e.preventDefault();
+      dropzone.classList.add("drag");
+    });
+  });
+  ["dragleave", "drop"].forEach(function (evt) {
+    dropzone.addEventListener(evt, function (e) {
+      e.preventDefault();
+      dropzone.classList.remove("drag");
+    });
+  });
+  dropzone.addEventListener("drop", function (e) {
+    if (e.dataTransfer.files.length) showFile(e.dataTransfer.files[0]);
+  });
+
+  modeGroup.addEventListener("change", function (e) {
+    const mode = e.target.value;
+    funcWrap.hidden = mode !== "conformal";
+    modeGroup.querySelectorAll("label").forEach(function (l) {
+      l.classList.toggle("active", l.querySelector("input").value === mode);
+    });
+  });
+
+  runBtn.addEventListener("click", function () {
+    if (!selectedFile) { setStatus("请先选择一张图片", "error"); return; }
+
+    const base = serverInput.value.trim().replace(/\/+$/, "");
+    let url = base;
+    const mode = getMode();
+    if (mode === "conformal") {
+      const func = funcInput.value.trim();
+      if (!func) { setStatus("请输入复变函数表达式", "error"); return; }
+      url += "/handle_conformal_image?func=" + encodeURIComponent(func);
+    } else {
+      url += "/handle_escher_image";
+    }
+
+    runBtn.disabled = true;
+    setStatus("处理中,请稍候…");
+
+    const startTime = performance.now();
+    fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": selectedFile.type || "image/png" },
+      body: selectedFile
+    }).then(function (resp) {
+      if (!resp.ok) {
+        return resp.text().then(function (txt) {
+          throw new Error("HTTP " + resp.status + (txt ? ":" + txt : ""));
+        });
+      }
+      return resp.blob();
+    }).then(function (blob) {
+      const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
+      if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
+      lastBlobUrl = URL.createObjectURL(blob);
+      resultImg.src = lastBlobUrl;
+      resultImg.classList.add("show");
+      resultMeta.textContent = "处理耗时 " + elapsed + " s · 大小 " +
+        (blob.size / 1024).toFixed(1) + " KB";
+      downloadBtn.href = lastBlobUrl;
+      downloadBtn.download = "conformal_canvas_result.png";
+      downloadBtn.style.display = "inline-block";
+      setStatus("完成", "ok");
+    }).catch(function (err) {
+      if (err instanceof TypeError) {
+        setStatus("无法连接到 " + base + "。\n推荐方式:先运行 python proxy.py,再通过 http://127.0.0.1:8000 打开本页面(同源,无跨域限制)。\n若已这么做,请确认 1. conformal_canvas 服务已启动 2. 地址/端口正确(默认 7854)", "error");
+      } else {
+        setStatus(err.message, "error");
+      }
+    }).finally(function () {
+      runBtn.disabled = false;
+    });
+  });
+})();
+</script>
+</body>
+</html>
