@@ -61,6 +61,7 @@ jobs:
           cmake -S . -B build -A x64 -DCMAKE_BUILD_TYPE=Release
           -DCMAKE_TOOLCHAIN_FILE="$env:GITHUB_WORKSPACE\vcpkg\scripts\buildsystems\vcpkg.cmake"
           -DVCPKG_TARGET_TRIPLET=x64-windows-static
+          '-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded$<$<CONFIG:Debug>:Debug>'
           -DCMAKE_PREFIX_PATH="$env:GITHUB_WORKSPACE\muparserx-prefix"
         env:
           VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
