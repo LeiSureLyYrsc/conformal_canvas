@@ -43,6 +43,7 @@ jobs:
           Invoke-WebRequest -UseBasicParsing "https://github.com/beltoforion/muparserx/archive/refs/tags/$env:MUPARSERX_VERSION.tar.gz" -OutFile muparserx.tar.gz
           tar -xzf muparserx.tar.gz
           Move-Item "muparserx-$($env:MUPARSERX_VERSION.TrimStart('v'))" muparserx-src
+          (Get-Content muparserx-src\CMakeLists.txt -Raw) -replace 'cmake_minimum_required\(VERSION 2\.8\.12\)', 'cmake_minimum_required(VERSION 3.16)' | Set-Content muparserx-src\CMakeLists.txt -NoNewline
           cmake -S muparserx-src -B muparserx-build `
             -DCMAKE_INSTALL_PREFIX="$env:GITHUB_WORKSPACE\muparserx-prefix" `
             -DCMAKE_BUILD_TYPE=Release `
@@ -96,7 +97,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends gcc-14 g++-14 libgomp-14-dev
+          sudo apt-get install -y --no-install-recommends gcc-14 g++-14
           echo "CC=gcc-14" >> "$GITHUB_ENV"
           echo "CXX=g++-14" >> "$GITHUB_ENV"
 
@@ -120,6 +121,7 @@ jobs:
           curl -fsSL "https://github.com/beltoforion/muparserx/archive/refs/tags/${MUPARSERX_VERSION}.tar.gz" -o muparserx.tar.gz
           tar -xzf muparserx.tar.gz
           mv "muparserx-${MUPARSERX_VERSION#v}" muparserx-src
+          sed -i 's/cmake_minimum_required(VERSION 2\.8\.12)/cmake_minimum_required(VERSION 3.16)/' muparserx-src/CMakeLists.txt
           cmake -S muparserx-src -B muparserx-build \
             -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/muparserx-prefix" \
             -DCMAKE_BUILD_TYPE=Release \

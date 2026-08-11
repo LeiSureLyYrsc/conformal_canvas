@@ -27,8 +27,7 @@ jobs:
             libboost-system-dev \
             libboost-url-dev \
             libmuparserx-dev \
-            libopencv-dev \
-            libomp-dev
+            libopencv-dev
           echo "CC=gcc-14" >> "$GITHUB_ENV"
           echo "CXX=g++-14" >> "$GITHUB_ENV"
 
