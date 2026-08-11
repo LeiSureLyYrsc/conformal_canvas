@@ -77,9 +77,14 @@ jobs:
           Copy-Item build\Release\conformal_canvas.exe staging\
           $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
           $vsPath = & $vswhere -latest -property installationPath
-          $redist = Get-ChildItem "$vsPath\VC\Redist\MSVC" -Directory | Sort-Object Name -Descending | Select-Object -First 1
-          Get-ChildItem "$($redist.FullName)\x64" -Recurse -Include vcomp140.dll,vcruntime140.dll,vcruntime140_1.dll,msvcp140.dll |
-            Copy-Item -Destination staging\ -Force
+          $all = Get-ChildItem "$vsPath\VC\Redist" -Recurse -File -Include vcomp140.dll,vcruntime140.dll,vcruntime140_1.dll,msvcp140.dll -ErrorAction SilentlyContinue
+          $wanted = foreach ($name in @('vcomp140.dll','vcruntime140.dll','vcruntime140_1.dll','msvcp140.dll')) {
+              $m = $all | Where-Object { $_.Name -eq $name -and $_.FullName -match '\\x64\\' } | Select-Object -First 1
+              if (-not $m) { $m = $all | Where-Object { $_.Name -eq $name } | Select-Object -First 1 }
+              if ($m) { $m.FullName }
+          }
+          if ($wanted.Count -ne 4) { throw "VC redist DLLs not found under $vsPath`n$($all | ForEach-Object { $_.FullName })" }
+          $wanted | ForEach-Object { Copy-Item $_ staging\ -Force }
           Compress-Archive -Path staging\* -DestinationPath conformal_canvas-windows-x64.zip -Force
 
       - name: Upload artifact
