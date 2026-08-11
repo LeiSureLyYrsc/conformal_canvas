@@ -6,6 +6,8 @@ project(conformal_canvas)
 
 cmake_policy(SET CMP0167 NEW)
 
+set(Boost_USE_STATIC_LIBS ON)
+
 find_package(OpenMP REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(Boost 1.70 REQUIRED COMPONENTS url)

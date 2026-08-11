@@ -1,0 +1,12 @@
+.git
+.gitignore
+build
+Dockerfile
+readme.md
+test.py
+test.png
+test_out.png
+test_out_conformal.png
+*.pyc
+__pycache__
+.DS_Store
